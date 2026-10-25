@@ -426,7 +426,7 @@ const SERVICES=["Déplacement AUCH + 30 km","Tuyau rigide souple","Décharge","O
 const DURATIONS=["JOUR","DEMI-JOURNÉE","NUIT","DEMI-NUIT"];
 
 // Les bons en attente sont écrits dans IndexedDB AVANT tout appel réseau.
-const SAG_VERSION = '2026.10.23.3';
+const SAG_VERSION = '2026.10.25.3';
 let dbPromise, bridgePromise, bridgeFrame, bridgeWindow, bridgeOrigin;
 let bridgeChannel, bridgeReadyResolve, bridgeReadyReject, syncRunning = false, renewal;
 
@@ -687,57 +687,34 @@ async function registerPwa() {
     await navigator.serviceWorker.ready; offlineReady=true; updateConnection();
   } catch(e) { offlineReady=false; updateConnection(); }
 }
-async function syncQueue(manual=false) {
-  if (syncRunning || !session) return;
-  if (!navigator.onLine || authRequired) {
-    if(manual) {
-      try { await loadLocal(session); } catch(e) { return toast(e.message); }
-      updateConnection();if(['bons','home'].includes(page))render();
-      toast(authRequired?'Reconnectez-vous pour envoyer les bons conservés.':'Hors connexion : les bons restent sur cet appareil.');
-    }
-    return;
-  }
-  syncRunning=true; updateConnection();
-  const owner=session;
-  const run=async()=>{
-    const entries=await outbox(owner);
-    if(manual && !entries.length)toast('Aucun bon en attente pour ce compte dans ce navigateur. Consultez aussi le brouillon depuis l’accueil.');
-    for (const entry of entries) {
-      if (session!==owner || !navigator.onLine || authRequired) break;
-      if (entry.error && !entry.retryable && !manual) continue;
-      entry.attempted=true; entry.error='';
-      await dbWrite([[queueKey(owner,entry.bon.id),entry]]);
-      try {
-        const result=await gas('saveBonServer',entry.bon,false,sessionToken);
-        if (!result?.ok || !result.number) throw networkError('Confirmation incomplète.');
-        const saved=Object.assign({},entry.bon,result); delete saved.userId;
-        // Suppression de la file seulement après confirmation et écriture du cache.
-        const cached=await dbGet('cache:'+owner) || {clients:[],bons:[]};
-        cached.bons=[saved,...cached.bons.filter(b=>b.id!==saved.id)];
-        await dbWrite([['cache:'+owner,cached],['detail:'+owner+':'+saved.id,saved]], [queueKey(owner,saved.id)]);
-        if (session===owner) {
-          bons=cached.bons; toast('Bon n°'+result.number+' enregistré. '+(result.mailStatus==='SKIPPED_TEST'?'Test : aucun e-mail envoyé.':result.mailStatus==='SENT'?'E-mail envoyé.':'Envoi du mail à vérifier.'));
-        }
-      } catch(e) {
-        entry.error=e.message.replace(/^\[[A-Z_]+\]\s*/,''); entry.errorCode=errorCode(e);
-        entry.retryable=!!e.network || (!isAuthError(e) && !['ACCES','INVALIDE','CONFLIT','VERROUILLE','TEST_OCCUPE','CONFIG'].includes(entry.errorCode));
-        await dbWrite([[queueKey(owner,entry.bon.id),entry]]);
-        if (e.network || isAuthError(e)) break;
-      }
-    }
-  };
-  try {
-    if (navigator.locks) await navigator.locks.request('sag-sync:'+owner,{ifAvailable:true},lock=>lock ? run() : undefined);
-    else await run(); // Les identifiants stables et le verrou serveur protègent aussi deux onglets.
-  } catch(e) { toast(e.message); }
-  finally {
-    syncRunning=false;
-    if (session===owner) {
-      try { await loadLocal(owner); } catch(e) { toast(e.message); }
-      updateConnection(); if (['bons','home'].includes(page)) render();
-    }
-  }
-  if (session===owner) await refreshData();
+async function verifierSynchronisationSAG() {
+  const owner = session;
+  if (!owner) throw new Error('Connectez-vous avec le compte du bon en attente.');
+  const state = await gas('getEtatApplicationSAG', sessionToken);
+  const entries = await outbox(owner);
+  if (session !== owner) throw new Error('Session changée. Recommencez la vérification.');
+  alert([
+    'VÉRIFICATION SANS ENVOI — ' + SAG_VERSION,
+    'Compte : ' + owner,
+    'Origine : ' + location.origin,
+    'API : ' + (window.SAG_CONFIG?.API_URL || 'Apps Script direct'),
+    'Relais : ' + bridgeDiagnostic,
+    'Version serveur : ' + state.version,
+    'Phase : ' + state.phase,
+    'Mode test PWA : ' + state.testPWA,
+    'Numérotation serveur : ' + state.numerotation,
+    'Prochain numéro déclaré : ' + (state.nextBon ?? 'réservé à l’administrateur'),
+    'Bons en attente : ' + entries.length,
+    ...entries.map(e => [
+      'Bon : ' + e.bon.id,
+      'Demande : ' + e.bon.submissionId,
+      'Numérotation locale : ' + e.bon.numerotationSAG,
+      'Code mémorisé : ' + (e.errorCode || 'aucun'),
+      'Erreur mémorisée : ' + (e.error || 'aucune'),
+      'Réessai automatique : ' + (e.retryable ? 'oui' : 'non')
+    ].join('\n'))
+  ].join('\n\n'));
+  return state;
 }
 window.addEventListener('online',()=>{resetBridge(); syncQueue(); refreshData(); updateConnection();});
 window.addEventListener('offline',()=>{serverReachable=false;updateConnection();});
@@ -928,6 +905,7 @@ function home(u){return `<div class="grid">
   <button class="ghost" onclick="syncQueue(true)">Synchroniser maintenant</button>
   <button class="ghost" onclick="go('bons')">Voir les bons en attente (${bonsHorsLigne.length})</button>
   <button class="ghost" onclick="diagnosticStockageSAG()">Diagnostic stockage</button>
+  <button class="ghost" onclick="verifierSynchronisationSAG().catch(e=>toast(e.message))">Vérifier sans envoyer</button>
   <p class="hint">Version ${SAG_VERSION}</p>
   ${authRequired?'<button class="primary" onclick="login()">Se reconnecter</button>':''}</div></div>`;}
 async function render(){
