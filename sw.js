@@ -1,27 +1,87 @@
-const CACHE = 'sag-production-shell-2026-10-25-1';
-const FILES = ['./index.html','./config.js','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
-self.addEventListener('install', event => event.waitUntil((async()=>{
-  const cache=await caches.open(CACHE);
-  for(const path of FILES){const response=await fetch(new Request(path,{cache:'reload',redirect:'follow'}));
-    if(!response.ok || response.redirected) throw Error('Asset non direct: '+path);
-    await cache.put(path,response);
+
+'use strict';
+
+const CACHE = 'sag-production-shell-2026-10-25-2';
+
+const FILES = [
+  './',
+  './index.html',
+  './config.js',
+  './manifest.webmanifest',
+  './icon-192.png',
+  './icon-512.png'
+];
+
+self.addEventListener('install', event => {
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+
+    for (const path of FILES) {
+      const response = await fetch(
+        new Request(path, { cache: 'reload' })
+      );
+
+      if (!response.ok) {
+        throw new Error('Fichier inaccessible : ' + path);
+      }
+
+      if (response.redirected) {
+        throw new Error('Redirection détectée : ' + path);
+      }
+
+      await cache.put(path, response);
+    }
+
+    await self.skipWaiting();
+  })());
+});
+
+self.addEventListener('activate', event => {
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+
+    for (const key of keys) {
+      if (
+        key.startsWith('sag-production-shell-') &&
+        key !== CACHE
+      ) {
+        await caches.delete(key);
+      }
+    }
+
+    await self.clients.claim();
+  })());
+});
+
+self.addEventListener('fetch', event => {
+  const request = event.request;
+
+  if (request.method !== 'GET') return;
+
+  const url = new URL(request.url);
+  const scope = new URL(self.registration.scope);
+
+  if (url.origin !== scope.origin) return;
+  if (!url.pathname.startsWith(scope.pathname)) return;
+
+  if (request.mode === 'navigate') {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE);
+      const cached = await cache.match('./index.html');
+
+      if (cached) return cached;
+
+      return fetch(request);
+    })());
+    return;
   }
-  await self.skipWaiting();
-})()));
-self.addEventListener('activate',event=>event.waitUntil((async()=>{
-  for(const key of await caches.keys()) if(key.startsWith('sag-production-shell-')&&key!==CACHE) await caches.delete(key);
-  await self.clients.claim();
-})()));
-self.addEventListener('fetch',event=>{
-  if(event.request.method!=='GET') return;
-  const url=new URL(event.request.url);
-  if(url.origin!==self.location.origin) return;
-  const scope=new URL(self.registration.scope);
-  if(!url.pathname.startsWith(scope.pathname)) return;
-  const target=(url.pathname===scope.pathname || url.pathname===scope.pathname+'index.html')?'./index.html':url.pathname.slice(scope.pathname.length);
-  const allowed=new Set(FILES);
-  const key=target.startsWith('./')?target:'./'+target;
-  if(!allowed.has(key)) return;
-  event.respondWith((async()=>{const cached=await caches.match(key);if(cached)return cached;
-    const response=await fetch(event.request);return response;})());
+
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE);
+    const cached = await cache.match(request);
+
+    if (cached) return cached;
+
+    return fetch(request);
+  })());
 });
