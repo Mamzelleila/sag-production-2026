@@ -413,6 +413,15 @@ body {
 button:disabled{opacity:.6;cursor:wait}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid #b3181c;outline-offset:2px}
 main{padding-bottom:calc(20px + env(safe-area-inset-bottom))}
 @media(max-width:700px){.top .logo,.app>.hero{display:none}.billing b{font-size:20px}.pdfpage{padding:16px}}
+  /* Masquage des commandes techniques en production */
+button[onclick="syncQueue(true)"],
+button[onclick="diagnosticStockageSAG()"],
+button[onclick^="verifierSynchronisationSAG("],
+.sag-home-status > b,
+.sag-home-status > p,
+.sag-pending-help {
+  display: none !important;
+}
 </style>
 <link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-192.png"><script src="./config.js"></script></head>
 <body><div id="root"><p>Ouverture SAG…</p></div><script>
@@ -560,6 +569,110 @@ async function diagnosticStockageSAG() {
     alert('Diagnostic impossible : ' + e.message);
   }
 }
+  // TEMPORAIRE — à retirer après utilisation.
+const SAG_BON_FICTIF_LOCAL = 'e9857c86-7208-495b-a6e4-119a84fbdd72';
+
+function boutonRetraitFictifSAG() {
+  return session === 'admin' && currentUser?.id === 'admin' &&
+    currentUser?.role === 'admin' &&
+    bonsHorsLigne.some(b => b.id === SAG_BON_FICTIF_LOCAL)
+    ? '<button class="ghost" onclick="retirerBonFictifLocalSAG()">Retirer le bon fictif de cet appareil</button>'
+    : '';
+}
+
+async function retirerBonFictifLocalSAG() {
+  const id = SAG_BON_FICTIF_LOCAL;
+  const key = 'outbox:admin:' + id;
+  function verifierContexte() {
+    if (location.origin !== 'https://mamzelleila.github.io' ||
+        !location.pathname.startsWith('/sag-production-2026/'))
+      throw new Error('Commande réservée à la PWA de production.');
+    if (session !== 'admin' || currentUser?.id !== 'admin' ||
+        currentUser?.role !== 'admin')
+      throw new Error('Connectez-vous au compte admin.');
+    if (navigator.onLine)
+      throw new Error('Fermez la PWA, activez le mode avion avec Wi-Fi désactivé, puis rouvrez-la hors connexion.');
+  }
+  function verifierBon(entry, cache, detail) {
+    if (!entry || entry.owner !== 'admin' || entry.bon?.id !== id ||
+        entry.bon.operatorId !== 'admin')
+      throw new Error('Entrée cible absente ou propriétaire différent : aucune suppression.');
+    const b = entry.bon;
+    const sansNumero = v => v === null || v === undefined || v === '';
+    if (!sansNumero(b.number) || b.ok === true || entry.ok === true ||
+        b.fileId || b.recordFileId || b.mailStatus || entry.number ||
+        Number(b.revision || 0) !== 0 || Number(b.version || 0) !== 0 ||
+        ['Traité', 'Annulé'].includes(b.status))
+      throw new Error('Numéro ou traitement détecté : aucune suppression.');
+    // Refus après une erreur ambiguë (réseau, délai dépassé, PDF, mail...).
+    // Dans le code fourni, cette erreur précise précède toute allocation.
+    if (entry.errorCode !== 'CONFIG' || entry.retryable !== false ||
+        !(/^(?:\[CONFIG\]\s*)?Production SAG non activée\. Enregistrement interdit\.$/.test(entry.error || '') ||
+          entry.error === 'Error: [CONFIG] Activez l’envoi depuis le compte SAG avant les vrais bons. Le test 1129 reste disponible.'))
+      throw new Error('Le refus initial avant enregistrement n’est pas confirmé : aucune suppression.');
+    if (detail || (cache && !Array.isArray(cache.bons)) ||
+        cache?.bons.some(bon => bon.id === id))
+      throw new Error('Donnée de confirmation locale présente ou cache inattendu : aucune suppression.');
+  }
+  try {
+    verifierContexte();
+    if (syncRunning || enregistrementEnCours)
+      throw new Error('Une opération est en cours : aucune suppression.');
+  } catch (e) { toast(e.message); return; }
+
+  // Empêche syncQueue de démarrer dans cette fenêtre pendant la vérification.
+  syncRunning = true;
+  updateConnection();
+  try {
+    const database = await db();
+    const snapshot = await new Promise((resolve, reject) => {
+      const tx = database.transaction('kv', 'readonly'), store = tx.objectStore('kv');
+      const a = store.get(key), c = store.get('cache:admin');
+      const d = store.get('detail:admin:' + id);
+      tx.oncomplete = () => {
+        try {
+          verifierBon(a.result, c.result, d.result);
+          resolve(JSON.stringify(a.result));
+        } catch (e) { reject(e); }
+      };
+      tx.onerror = tx.onabort = () => reject(tx.error || new Error('Lecture locale interrompue.'));
+    });
+    verifierContexte();
+    if (!confirm('SUPPRESSION LOCALE DU BON FICTIF\n\n' + id +
+      '\nCompte : admin\n\nSeule son entrée en attente sur cet appareil sera supprimée.' +
+      '\nAucun envoi au serveur. Cette suppression locale est définitive.' +
+      '\n\nConfirmez-vous la suppression de ce seul bon fictif ?')) return;
+
+    // Relit et supprime dans UNE transaction : aucune écriture entre les deux.
+    await new Promise((resolve, reject) => {
+      const tx = database.transaction('kv', 'readwrite'), store = tx.objectStore('kv');
+      const a = store.get(key), c = store.get('cache:admin');
+      const d = store.get('detail:admin:' + id);
+      let remaining = 3, failure;
+      const checked = () => {
+        if (--remaining) return;
+        try {
+          verifierContexte();
+          verifierBon(a.result, c.result, d.result);
+          if (JSON.stringify(a.result) !== snapshot)
+            throw new Error('Le bon a changé depuis la confirmation : aucune suppression.');
+          store.delete(key); // UNIQUE écriture, clé fixe.
+        } catch (e) { failure = e; tx.abort(); }
+      };
+      a.onsuccess = c.onsuccess = d.onsuccess = checked;
+      tx.oncomplete = resolve;
+      tx.onerror = tx.onabort = () => reject(failure || tx.error || new Error('Suppression interrompue.'));
+    });
+
+    // Mise à jour de l'affichage seulement ; aucune autre écriture IndexedDB.
+    bonsHorsLigne = bonsHorsLigne.filter(b => b.id !== id);
+    if (['home', 'bons'].includes(page)) await render();
+    toast('Bon fictif retiré de la file locale. Les autres données sont conservées.');
+  } catch (e) { toast(e.message); }
+  finally { syncRunning = false; updateConnection(); }
+}
+
+
 function queueKey(owner,id) { return 'outbox:'+owner+':'+id; }
 function networkError(message) { const e=new Error(message); e.network=true; return e; }
 function errorCode(error) { return (String(error.message).match(/\[([A-Z_]+)\]/)||[])[1] || ''; }
@@ -898,7 +1011,8 @@ function home(u){return `<div class="grid">
   <button class="action primary" onclick="startBon()">＋ <span>Créer un ordre de travail</span>›</button>
   <button class="action" onclick="go('bons')">▣ <span>${u.role==='admin'?'Tous les bons':'Mes bons'}</span>›</button>
   ${u.role==='admin'?`<button class="action" onclick="go('clients')">♙ <span>Gestion clients</span>›</button><button class="action" onclick="go('passwords')">🔐 <span>Gestion des mots de passe</span>›</button>`:''}
-  <div class="status"><b>${appState.testPWA?'Copie de test PWA':appState.phase==='test'?'Test 1129':appState.phase==='production'?'Ordres de travail SAG':'Connexion au serveur en cours'}</b>
+  ${boutonRetraitFictifSAG()}
+  <div class="status sag-home-status"><b>${appState.testPWA?'Copie de test PWA':appState.phase==='test'?'Test 1129':appState.phase==='production'?'Ordres de travail SAG':'Connexion au serveur en cours'}</b>
   <p>${appState.testPWA?'Bons de test à partir de 900000. Les PDF restent dans le dossier de test. Aucun e-mail n’est envoyé.':appState.phase==='test'?'Un seul bon de test. Les e-mails vont uniquement à SAG. Le premier vrai bon sera le 1130.':'Le numéro définitif est attribué à la synchronisation.'}</p>
   <p>${offlineReady?'Cette application peut être rouverte hors connexion.':'Pour rouvrir hors connexion, utilisez la version installable préparée pour le téléphone.'}</p>
   <p>L’envoi reprend au retour du réseau lorsque l’application est ouverte, ou à sa prochaine ouverture.</p>
@@ -1018,6 +1132,7 @@ function bonsPage(u){
   const list=allBons(),admin=u.role==='admin';
   const counters=admin?`<div class="billing">${[['À facturer','À facturer'],['Traité','Traités'],['En attente BC','Attente BC'],['Annulé','Annulés']].map(([s,label])=>`<div><span>${label}</span><b>${list.filter(b=>!b.horsLigne&&b.status===s).length}</b></div>`).join('')}</div>
     <div class="tabs" id="bonsTabs">${[['all','Tous'],['À facturer','À facturer'],['Traité','Traités'],['En attente BC','Attente BC'],['Annulé','Annulés']].map(([s,label])=>`<button class="${statusClass(s)} ${filtreStatutActuel===s?'active':''}" data-status="${esc(s)}" onclick="filtrerStatutBons(this.dataset.status,this)">${label}</button>`).join('')}</div>`:'';
+  ${boutonRetraitFictifSAG()}
   return title(admin?'Tous les bons':'Mes bons')+counters+`<div class="panel"><div class="search">⌕<input id="bq" value="${esc(searchQuery)}" placeholder="Numéro, client ou opérateur…" oninput="filterBons()"></div><button class="ghost" onclick="syncQueue(true)">↻ Synchroniser</button><button class="ghost" onclick="diagnosticStockageSAG()">🔍 Diagnostic stockage</button><section id="pendingBons" aria-live="polite"></section><div id="blist"></div></div>`;
 }
 function statusClass(status){return {'Traité':'statut-vert','En attente BC':'statut-orange','À facturer':'statut-rouge','Annulé':'statut-gris'}[status]||'';}
@@ -1040,8 +1155,8 @@ function filterBons(){
   const waiting=allBons().filter(b=>b.horsLigne);
   if(pending) pending.innerHTML=waiting.length
     ? '<h3>En attente d’envoi sur cet appareil ('+waiting.length+')</h3>'+waiting.map(bonRow).join('')+
-      '<p class="hint">Ces bons restent affichés même lorsqu’un filtre est actif.</p>' : '';
-  const matches=allBons().filter(b=>!b.horsLigne &&
+      '<p class="hint sag-pending-help">Ces bons restent affichés même lorsqu’un filtre est actif.</p>' : '';
+const matches=allBons().filter(b=>!b.horsLigne &&
     `${b.number||''} ${b.client} ${b.operator}`.toLocaleLowerCase('fr').includes(needle)&&
     (currentUser.role!=='admin'||filtreStatutActuel==='all'||b.status===filtreStatutActuel));
   list.innerHTML='<h3>Bons confirmés</h3>'+(matches.length?matches.map(bonRow).join(''):'<p class="hint">Aucun bon confirmé correspondant.</p>');
