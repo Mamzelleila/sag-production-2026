@@ -950,8 +950,7 @@ function togglePassword() {
   const input=document.getElementById('lpw');
   if (!input) return;
   input.type=input.type==='password'?'text':'password';
-  const button=document.querySelector('button[onclick="togglePassword()"]');
-  if (button) button.setAttribute('aria-label',input.type==='password'?'Afficher le mot de passe':'Masquer le mot de passe');
+const button=document.querySelector('.password-field button');  if (button) button.setAttribute('aria-label',input.type==='password'?'Afficher le mot de passe':'Masquer le mot de passe');
 }
 function login() {
   document.getElementById('root').innerHTML=`<div class="login"><div class="loginbox"><img src="${LOGO}" alt="SAG">
@@ -963,6 +962,7 @@ function login() {
     <p class="hint">La première connexion nécessite Internet. Sur votre téléphone, cochez « Rester connecté » pour retrouver vos bons hors connexion.</p>
     ${authRequired?'<p class="error">Reconnectez-vous pour envoyer les bons sauvegardés sur cet appareil.</p>':''}
     </div></div>`;
+  document.querySelector('.password-field button').addEventListener('click', togglePassword);
   const select=document.getElementById('lid');
   const last=readLocal('sagAuthV2'); if (last?.user?.id) select.value=last.user.id;
   select.onchange=()=>document.getElementById('forgot').hidden=select.value==='admin';select.onchange();
