@@ -413,10 +413,7 @@ body {
 button:disabled{opacity:.6;cursor:wait}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid #b3181c;outline-offset:2px}
 main{padding-bottom:calc(20px + env(safe-area-inset-bottom))}
 @media(max-width:700px){.top .logo,.app>.hero{display:none}.billing b{font-size:20px}.pdfpage{padding:16px}}
-  /* Masquage des commandes techniques en production */
-button[onclick="syncQueue(true)"],
-button[onclick="diagnosticStockageSAG()"],
-button[onclick^="verifierSynchronisationSAG("],
+/* Masquage des informations secondaires uniquement */
 .sag-home-status > b,
 .sag-home-status > p,
 .sag-pending-help {
