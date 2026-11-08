@@ -1003,7 +1003,6 @@ function login() {
     <p class="hint">La première connexion nécessite Internet. Sur votre téléphone, cochez « Rester connecté » pour retrouver vos bons hors connexion.</p>
     ${authRequired?'<p class="error">Reconnectez-vous pour envoyer les bons sauvegardés sur cet appareil.</p>':''}
     </div></div>`;
-  document.querySelector('.password-field button').addEventListener('click', togglePassword);
   const select=document.getElementById('lid');
   const last=readLocal('sagAuthV2'); if (last?.user?.id) select.value=last.user.id;
   select.onchange=()=>document.getElementById('forgot').hidden=select.value==='admin';select.onchange();
