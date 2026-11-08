@@ -1192,7 +1192,7 @@ async function abandonDraft(){
 function readForm(){
   const b=Object.assign({},form),value=id=>document.getElementById(id)?.value||'';
   b.id=b.id||uid();b.number=b.number??null;b.numerotationSAG='SAG-1130-v1';
-  ['note','code','place','contact','other','remarks','clientName','clientRole','clientEmail','clientEmail2','clientEmail3'].forEach(k=>b[k]=value(k).trim());
+  ['note','code','place','contact','other','clientName','clientRole','clientEmail','clientEmail2','clientEmail3'].forEach(k=>b[k]=value(k).trim());
   b.client=value('clientSearch').trim();b.durations={};
   document.querySelectorAll('.durqty').forEach(e=>b.durations[e.dataset.q]=Number(e.value));
   b.overtime=document.getElementById('ot').checked;b.hours=value('hours');
@@ -1202,7 +1202,7 @@ function readForm(){
   return b;
 }
 function validateRequired(b){
-  const limits={client:160,note:1000,place:250,code:100,contact:200,other:1000,remarks:2000,clientName:160,clientRole:160,clientEmail:254,clientEmail2:254,clientEmail3:254};
+  const limits={client:160,note:1000,place:250,code:100,contact:200,other:1000,clientName:160,clientRole:160,clientEmail:254,clientEmail2:254,clientEmail3:254};
   for(const [field,limit] of Object.entries(limits))if(String(b[field]||'').length>limit)return 'Un champ est trop long ('+field+').';
   if(!b.client?.trim())return 'Client obligatoire.';
   if(!b.dates?.length)return 'Sélectionnez au moins une date.';
@@ -1586,9 +1586,7 @@ ${SERVICES.map(s=>`<button type="button" class="service ${((b.services||[]).incl
 </div>
 <textarea id="other" maxlength="1000" placeholder="Autre — préciser ici">${esc(b.other||"")}</textarea>
 
-<h3>6. Remarques</h3><textarea id="remarks" maxlength="2000" placeholder="Saisir une remarque…">${esc(b.remarks||"")}</textarea>
-
-<h3>7. Signature client *</h3>
+<h3>6. Signature client *</h3>
 <div class="sigwrap">
   <div class="sigtitle">Signature du client</div>
   <canvas id="clientSig" class="sigcanvas"></canvas>
@@ -1925,7 +1923,6 @@ return title("Récapitulatif du bon")+`<p class="hint">Récapitulatif des inform
 <div class="pdfsection"><b>INFORMATIONS COMPLÉMENTAIRES</b><div>Note : ${esc(b.note||"—")}</div><div>Contact : ${esc(b.contact||"—")}</div></div>
 <div class="pdfsection"><b>DURÉE DE TRAVAIL</b>${Object.entries(b.durations||{}).map(([k,v])=>`<div>${esc(k)} : <b>${esc(v)}</b></div>`).join("")}${b.overtime?`<div>Heures supplémentaires : <b>${esc(b.hours)} h</b></div>`:""}</div>
 <div class="pdfsection"><b>PRESTATIONS COMPLÉMENTAIRES</b>${(b.services||[]).map(x=>`<div>☑ ${esc(x)}</div>`).join("")}${b.other?`<div>☑ Autre : ${esc(b.other)}</div>`:""}</div>
-<div class="pdfsection"><b>REMARQUES</b><div>${esc(b.remarks||"—")}</div></div>
 <div class="pdfsection"><b>SIGNATURE CLIENT</b><div class="pdfsig">${b.clientSignature?`<img src="${esc(b.clientSignature)}" alt="Signature client" style="max-width:100%;max-height:78px">`:`Signature manuscrite client`}</div><div>${esc(b.clientName||"")} — ${esc(b.clientRole||"")}</div>
 ${[b.clientEmail, b.clientEmail2, b.clientEmail3]
   .map(email => String(email || "").trim())
