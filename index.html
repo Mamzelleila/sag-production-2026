@@ -1356,8 +1356,7 @@ async function demarrerSAG(){
     }else login();
   }catch(e){document.getElementById('root').innerHTML='<div class="panel"><h2>Ouverture impossible</h2><p>'+esc(e.message)+'</p><button class="primary" onclick="location.reload()">Réessayer</button></div>';}
 }
-
-function clientsPage(){return title("Clients")+`<div class="panel"><div class="search">⌕<input id="cq" placeholder="Rechercher…" oninput="filterClients()"></div><div id="clist">${clients.map(clientRow).join("")}</div><h3>Ajouter un client</h3><div class="two"><input id="cn" placeholder="Nom de l'entreprise"><input id="cs" placeholder="Numéro de SIRET"></div><button class="primary" onclick="addClient()">＋ Ajouter</button></div>`}
+function clientsPage(){return title("Clients")+`<div class="panel"><div class="search">⌕<input id="cq" placeholder="Rechercher…" oninput="filterClients()"></div><div id="clist">${[...clients].sort((a,b)=>(a.name||'').localeCompare(b.name||'','fr',{sensitivity:'base'})).map(clientRow).join("")}</div><h3>Ajouter un client</h3><div class="two"><input id="cn" placeholder="Nom de l'entreprise"><input id="cs" placeholder="Numéro de SIRET"></div><button class="primary" onclick="addClient()">＋ Ajouter</button></div>`}
 function clientRow(c) {
   return `
     <div class="listrow">
@@ -1519,8 +1518,14 @@ async function removeClient(id) {
     }
   };
 }
-function filterClients(){const q=document.getElementById("cq").value.toLowerCase();document.getElementById("clist").innerHTML=clients.filter(c=>c.name.toLowerCase().includes(q)).map(clientRow).join("")}
-async function addClient() {
+function filterClients(){
+  const q=document.getElementById("cq").value.toLowerCase();
+  document.getElementById("clist").innerHTML=clients
+    .filter(c=>c.name.toLowerCase().includes(q))
+    .sort((a,b)=>a.name.localeCompare(b.name,'fr',{sensitivity:'base'}))
+    .map(clientRow).join("");
+}
+  async function addClient() {
   if (window.addingClient) return;
   window.addingClient = true;
   const n = document.getElementById("cn").value.trim();
@@ -1779,10 +1784,15 @@ window.form.manual=value;
 clientSuggest();
 }
 function clientSuggest(){
-const q=document.getElementById("clientSearch").value.toLowerCase().trim();
-const box=document.getElementById("suggest");
-if(!box)return;
-box.innerHTML=q?clients.filter(c=>c.name.toLowerCase().includes(q)).slice(0,5).map(c=>`<button type="button" class="action" style="margin:5px 0;background:#f5f6f7;color:#25292d" onclick="pickClient('${c.id}')">${esc(c.name)} — SIRET ${esc(c.siret)}</button>`).join(""):"";
+  const q=document.getElementById("clientSearch").value.toLowerCase().trim();
+  const box=document.getElementById("suggest");
+  if(!box)return;
+  box.innerHTML=q?clients
+    .filter(c=>c.name.toLowerCase().includes(q))
+    .sort((a,b)=>a.name.localeCompare(b.name,'fr',{sensitivity:'base'}))
+    .slice(0,5)
+    .map(c=>`<button type="button" class="action" style="margin:5px 0;background:#f5f6f7;color:#25292d" onclick="pickClient('${c.id}')">${esc(c.name)} — SIRET ${esc(c.siret)}</button>`)
+    .join(""):"";
 }
 function pickClient(id){
 const name=clients.find(c=>c.id===id)?.name||"";
