@@ -421,7 +421,9 @@ main{padding-bottom:calc(20px + env(safe-area-inset-bottom))}
 }
   
 button[onclick="syncQueue(true)"],
-button[onclick="diagnosticStockageSAG()"] {
+button[onclick="diagnosticStockageSAG()"],
+button[onclick="go('bons')"].ghost,
+button[onclick^="verifierSynchronisationSAG()"] {
   display: none !important;
 }
 
