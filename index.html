@@ -934,7 +934,15 @@ async function verifierSynchronisationSAG() {
 window.addEventListener('online',()=>{resetBridge(); syncQueue(); refreshData(); updateConnection();});
 window.addEventListener('offline',()=>{serverReachable=false;updateConnection();});
 document.addEventListener('visibilitychange',()=>{
-  if (document.visibilityState==='visible') {syncQueue();refreshData();}
+  if (document.visibilityState==='visible') {
+  syncQueue();
+  refreshData();
+  if (navigator.onLine && 'serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistration()
+      .then(r => r?.update())
+      .catch(e => console.warn('Mise à jour PWA :', e));
+  }
+}
   else persistDraft().catch(()=>{});
 });
 setInterval(()=>{if (document.visibilityState==='visible') syncQueue();},30000);
