@@ -1191,6 +1191,7 @@ async function abandonDraft(){
 }
 function readForm(){
   const b=Object.assign({},form),value=id=>document.getElementById(id)?.value||'';
+  delete b.remarks;
   b.id=b.id||uid();b.number=b.number??null;b.numerotationSAG='SAG-1130-v1';
   ['note','code','place','contact','other','clientName','clientRole','clientEmail','clientEmail2','clientEmail3'].forEach(k=>b[k]=value(k).trim());
   b.client=value('clientSearch').trim();b.durations={};
