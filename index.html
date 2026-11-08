@@ -791,6 +791,21 @@ async function refreshData() {
 }
 async function save() { if (session) await dbWrite([['cache:'+session,{clients,bons}]]); }
 
+
+let rechargementPwaEffectue = false;
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (rechargementPwaEffectue) return;
+    if (page === 'new' || enregistrementEnCours || syncRunning) return;
+    if (document.visibilityState !== 'visible') return;
+
+    rechargementPwaEffectue = true;
+    window.location.reload();
+  });
+}
+
+
 async function registerPwa() {
   if (!window.SAG_CONFIG || !('serviceWorker' in navigator) || !isSecureContext) return;
 
