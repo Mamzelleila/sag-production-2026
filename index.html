@@ -790,13 +790,26 @@ async function refreshData() {
   } catch(e) { updateConnection(); }
 }
 async function save() { if (session) await dbWrite([['cache:'+session,{clients,bons}]]); }
+
 async function registerPwa() {
   if (!window.SAG_CONFIG || !('serviceWorker' in navigator) || !isSecureContext) return;
+
   try {
-    await navigator.serviceWorker.register('./sw.js');
-    await navigator.serviceWorker.ready; offlineReady=true; updateConnection();
-  } catch(e) { offlineReady=false; updateConnection(); }
+    const registration = await navigator.serviceWorker.register('./sw.js');
+
+    await navigator.serviceWorker.ready;
+    offlineReady = true;
+    updateConnection();
+
+    if (navigator.onLine) {
+      registration.update().catch(e => console.warn('Mise à jour PWA :', e));
+    }
+  } catch(e) {
+    offlineReady = false;
+    updateConnection();
+  }
 }
+
 async function syncQueue(manual=false) {
   if (syncRunning || !session) return;
   if (!navigator.onLine || authRequired) {
