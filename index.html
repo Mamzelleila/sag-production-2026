@@ -419,6 +419,12 @@ main{padding-bottom:calc(20px + env(safe-area-inset-bottom))}
 .sag-pending-help {
   display: none !important;
 }
+  
+button[onclick="syncQueue(true)"],
+button[onclick="diagnosticStockageSAG()"] {
+  display: none !important;
+}
+
 </style>
 <link rel="manifest" href="./manifest.webmanifest"><link rel="apple-touch-icon" href="./icon-192.png"><script src="./config.js"></script></head>
 <body><div id="root"><p>Ouverture SAG…</p></div><script>
