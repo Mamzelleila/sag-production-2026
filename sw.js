@@ -1,7 +1,7 @@
 
 'use strict';
 
-const CACHE = 'sag-production-shell-2026-11-08-11';
+const CACHE = 'sag-production-shell-2026-11-09-12';
 const FILES = [
   './',
   './index.html',
@@ -63,7 +63,10 @@ self.addEventListener('fetch', event => {
   if (url.origin !== scope.origin) return;
   if (!url.pathname.startsWith(scope.pathname)) return;
 
-  if (request.mode === 'navigate') {
+  if (
+  request.mode === 'navigate' &&
+  (url.pathname === scope.pathname || url.pathname === scope.pathname + 'index.html')
+) {
     event.respondWith((async () => {
       const cache = await caches.open(CACHE);
       const cached = await cache.match('./index.html');
