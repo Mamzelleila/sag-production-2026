@@ -728,6 +728,7 @@ async function connectBridge() {
     bridgeReadyReject=reject;
     bridgeFrame=document.createElement('iframe'); bridgeFrame.hidden=true; bridgeFrame.title='Connexion SAG';
     bridgeFrame.referrerPolicy='no-referrer';
+    bridgeFrame.setAttribute('credentialless', '');
     bridgeFrame.src=url+'?bridge=1&origin='+encodeURIComponent(location.origin)+'&channel='+bridgeChannel;
     document.body.appendChild(bridgeFrame);
   });
