@@ -1,1 +1,1 @@
-window.SAG_CONFIG = Object.freeze({API_URL: "https://script.google.com/macros/s/AKfycbwsGp7xSMQOnCJRuBUN5KC3OrwEYpUQVo0r78EMOxFOR-Knc3m9QkP2e0zAg-emkAapkA/exec"});
+window.SAG_CONFIG = Object.freeze({API_URL: "https://script.google.com/macros/s/AKfycbwDht8bvR-XUolf7Irk_WQHXYiwN28CF_zP_59QoF6F47apyt4luwlQLymJNMGDzMROsQ/exec"});
