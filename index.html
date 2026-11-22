@@ -1930,7 +1930,7 @@ function clearSignature(id){let c=document.getElementById(id);if(c){c.getContext
 
 function pdfPreview(b){
 if(!b)return title("Bon indisponible");
-return title("Récapitulatif du bon")+`<p class="hint">Récapitulatif des informations enregistrées. Le PDF définitif est généré par le serveur.</p>`+`<div class="pdfviewport"><div class="pdfpage">
+return title("Récapitulatif du bon")+`<div class="pdfviewport"><div class="pdfpage">
 <div class="pdfhead"><img src="${LOGO}"><div class="pdfnum">${b.number ? "ORDRE DE TRAVAIL N° " + esc(b.number) : "N° à la synchronisation"}</div></div>
 <div class="pdfsection"><b>BON DE RÉCEPTION — INTERVENTION ASPIRATRICE</b>
 <div class="pdfrow"><b>CLIENT</b><span>${esc(b.client)}</span></div>
@@ -1952,8 +1952,7 @@ ${[b.clientEmail, b.clientEmail2, b.clientEmail3]
 <div class="pdfactions">
 ${b.mailStatus==='SKIPPED_TEST'?'<p class="hint">Bon de test : aucun e-mail envoyé.</p>':''}
 ${!b.horsLigne && b.fileId ? `<button class="primary" onclick="downloadPdf('${b.id}')">Télécharger le PDF définitif</button>` : `<p class="hint">Le PDF sera disponible après confirmation de l’enregistrement.</p>`}
-${!b.horsLigne && currentUser.role==='admin' && b.status!=='Annulé' && ['UNCERTAIN','SENDING','PENDING'].includes(b.mailStatus) ? `<button class="ghost" onclick="resendMail('${b.id}')">Vérifier / renvoyer le mail</button>` : ''}
-<button class="primary" style="background:#5c666e" onclick="go('bons')">‹ Retour aux bons</button></div>`;
+${!b.horsLigne && currentUser.role==='admin' && b.status!=='Annulé' && ['UNCERTAIN','SENDING','PENDING'].includes(b.mailStatus) ? `<button class="ghost" style="display:none" onclick="resendMail('${b.id}')">Vérifier / renvoyer le mail</button>` : ''}<button class="primary" style="background:#5c666e" onclick="go('bons')">‹ Retour aux bons</button></div>`;
 }
 
 demarrerSAG();
