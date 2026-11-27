@@ -963,19 +963,44 @@ function updateConnection() {
 }
 async function persistDraft() {
   if (!session || page!=='new' || enregistrementEnCours || !document.getElementById('clientSearch')) return;
-  form=readForm(); window.form=form;
+
+  form=readForm();
+  window.form=form;
+
+  const hasContent = !!(
+    editing ||
+    form.client ||
+    form.note ||
+    form.code ||
+    form.place ||
+    form.contact ||
+    form.other ||
+    form.clientName ||
+    form.clientRole ||
+    form.clientEmail ||
+    form.clientEmail2 ||
+    form.clientEmail3 ||
+    form.clientSignature ||
+    form.dates?.length ||
+    form.services?.length ||
+    Object.keys(form.durations || {}).length ||
+    form.overtime ||
+    (currentUser.role === 'admin' &&
+     form.machine &&
+     form.machine !== currentUser.machine)
+  );
+
+  const e=document.getElementById('draftState');
+
+  if (!hasContent) {
+    await dbWrite([],['draft:'+session]);
+    if (e) e.textContent='Aucun brouillon à conserver';
+    return;
+  }
+
   await dbWrite([['draft:'+session,{bon:copy(form),editing:!!editing}]]);
-  const e=document.getElementById('draftState'); if (e) e.textContent='Brouillon enregistré sur cet appareil';
+  if (e) e.textContent='Brouillon enregistré sur cet appareil';
 }
-function scheduleDraft() {
-  clearTimeout(draftTimer);
-  draftTimer=setTimeout(()=>persistDraft().catch(e=>toast(e.message)),250);
-}
-document.addEventListener('input',e=>{if (e.target.closest('#main') && page==='new') scheduleDraft();});
-document.addEventListener('change',e=>{
-  if (e.target.id==='ot') { const h=document.getElementById('hours'); if(h) h.disabled=!e.target.checked; }
-  if (page==='new') scheduleDraft();
-});
 
 function toast(t) {
   document.querySelector('.toast')?.remove();
