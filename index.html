@@ -1001,7 +1001,15 @@ async function persistDraft() {
   await dbWrite([['draft:'+session,{bon:copy(form),editing:!!editing}]]);
   if (e) e.textContent='Brouillon enregistré sur cet appareil';
 }
-
+function scheduleDraft() {
+  clearTimeout(draftTimer);
+  draftTimer=setTimeout(()=>persistDraft().catch(e=>toast(e.message)),250);
+}
+document.addEventListener('input',e=>{if (e.target.closest('#main') && page==='new') scheduleDraft();});
+document.addEventListener('change',e=>{
+  if (e.target.id==='ot') { const h=document.getElementById('hours'); if(h) h.disabled=!e.target.checked; }
+  if (page==='new') scheduleDraft();
+});
 function toast(t) {
   document.querySelector('.toast')?.remove();
   const e=document.createElement('div');e.className='toast';e.role='status';e.textContent=String(t).replace(/^\[[A-Z_]+\]\s*/,'');
