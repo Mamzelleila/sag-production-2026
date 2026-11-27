@@ -1952,7 +1952,7 @@ ${[b.clientEmail, b.clientEmail2, b.clientEmail3]
 <div class="pdfactions">
 ${b.mailStatus==='SKIPPED_TEST'?'<p class="hint">Bon de test : aucun e-mail envoyé.</p>':''}
 ${!b.horsLigne && b.fileId ? `<button class="primary" onclick="downloadPdf('${b.id}')">Télécharger le PDF définitif</button>` : `<p class="hint">Le PDF sera disponible après confirmation de l’enregistrement.</p>`}
-${!b.horsLigne && currentUser.role==='admin' && b.status!=='Annulé' && ['UNCERTAIN','SENDING','PENDING'].includes(b.mailStatus) ? `<button class="ghost" style="display:none" onclick="resendMail('${b.id}')">Vérifier / renvoyer le mail</button>` : ''}<button class="primary" style="background:#5c666e" onclick="go('bons')">‹ Retour aux bons</button></div>`;
+${!b.horsLigne && currentUser.role==='admin' && b.status!=='Annulé' && ['UNCERTAIN','SENDING','PENDING'].includes(b.mailStatus) ? `<button class="ghost" onclick="resendMail('${b.id}')">Vérifier / renvoyer le mail</button>` : ''}<button class="primary" style="background:#5c666e" onclick="go('bons')">‹ Retour aux bons</button></div>`;
 }
 
 demarrerSAG();
