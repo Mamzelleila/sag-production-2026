@@ -1568,6 +1568,7 @@ return title(editing
 <h3>1. Client</h3>
 <div class="search">⌕<input id="clientSearch" maxlength="160" value="${esc(b.client||"")}" placeholder="Rechercher ou saisir un client…*" oninput="clientInputChanged()"></div>
 <div id="suggest"></div>
+<div id="clientSiretDisplay" class="hint">${b.clientSiret ? "SIRET : " + esc(b.clientSiret) : ""}</div>
 <textarea id="note" maxlength="1000" placeholder="Note complémentaire">${esc(b.note||"")}</textarea>
 
 <h3>2. Date(s) du chantier</h3>
@@ -1780,12 +1781,14 @@ function toggleDurationOption(d) {
   }
 }
 function clientInputChanged(){
-const input=document.getElementById("clientSearch");
-const value=input.value.trim();
-window.form.client=value;
-window.form.clientId="";
-window.form.clientSiret="";
-window.form.manual=value;
+  const input=document.getElementById("clientSearch");
+  const value=input.value.trim();
+    window.form.client=value;
+    window.form.clientId="";
+    window.form.clientSiret="";
+  const siretDisplay=document.getElementById("clientSiretDisplay");
+    if(siretDisplay)siretDisplay.textContent="";
+    window.form.manual=value;
 clientSuggest();
 }
 function clientSuggest(){
@@ -1809,6 +1812,9 @@ window.form.client=name;
 window.form.manual="";
 const c=clients.find(x=>x.id===id);
 if(c)window.form.clientSiret=c.siret||"";
+  const siretDisplay=document.getElementById("clientSiretDisplay");
+if(siretDisplay)siretDisplay.textContent=window.form.clientSiret
+  ? "SIRET : "+window.form.clientSiret : "";
 const box=document.getElementById("suggest");
 if(box)box.innerHTML="";
 }
@@ -1933,7 +1939,7 @@ if(!b)return title("Bon indisponible");
 return title("Récapitulatif du bon")+`<div class="pdfviewport"><div class="pdfpage">
 <div class="pdfhead"><img src="${LOGO}"><div class="pdfnum">${b.number ? "ORDRE DE TRAVAIL N° " + esc(b.number) : "N° à la synchronisation"}</div></div>
 <div class="pdfsection"><b>BON DE RÉCEPTION — INTERVENTION ASPIRATRICE</b>
-<div class="pdfrow"><b>CLIENT</b><span>${esc(b.client)}</span></div>
+<div class="pdfrow"><b>CLIENT</b><span>${esc(b.client)}${b.clientSiret ? " — SIRET " + esc(b.clientSiret) : ""}</span></div>
 <div class="pdfrow"><b>DATES</b><span>${(b.dates||[]).map(x=>new Date(x+"T12:00:00").toLocaleDateString("fr-FR")).join(" • ")}</span></div>
 <div class="pdfrow"><b>CHANTIER</b><span>${esc(b.place||"")} ${b.code? "— "+esc(b.code):""}</span></div></div>
 <div class="pdfsection"><b>INFORMATIONS COMPLÉMENTAIRES</b><div>Note : ${esc(b.note||"—")}</div><div>Contact : ${esc(b.contact||"—")}</div></div>
