@@ -1,7 +1,7 @@
 
 'use strict';
 
-const CACHE = 'sag-production-shell-2026-27-11-16';
+const CACHE = 'sag-production-shell-2026-27-11-17';
 const FILES = [
   './',
   './index.html',
